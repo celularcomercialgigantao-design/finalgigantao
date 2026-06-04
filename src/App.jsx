@@ -387,7 +387,7 @@ const LoginScreen = ({ onLogin, portalMode, data, setData }) => {
           </div>
           <img src="/logo-gigantao.png" alt="Gigantão" style={{maxWidth:"220px",marginBottom:"12px"}} />
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>
-            {portalMode ? "Portal do Fornecedor" : "Sistema de Gestão"}
+            {portalMode ? "PORTAL DO FORNECEDOR" : "Sistema de Gestão"}
           </h2>
           <p style={{ margin: "6px 0 0", color: COLORS.textMuted, fontSize: 13 }}>
             {modo === "cadastro" ? "Criar novo cadastro" : portalMode ? "Acesse suas informações financeiras" : "Gestão financeira de fornecedores"}
