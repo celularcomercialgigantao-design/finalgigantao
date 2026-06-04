@@ -2,26 +2,29 @@ import { useState, useEffect, useCallback } from "react";
 
 // ─── THEME & CONSTANTS ───────────────────────────────────────────────────────
 const COLORS = {
-  primary: "#1a56db",
-  primaryDark: "#1e429f",
-  primaryLight: "#e8f0fe",
-  success: "#057a55",
-  successLight: "#def7ec",
-  warning: "#c27803",
-  warningLight: "#fdf6b2",
+  primary: "#009B4E",
+  primaryDark: "#007A3D",
+  primaryLight: "#E6F7EE",
+  secondary: "#FF9416",
+  secondaryDark: "#E67F00",
+  secondaryLight: "#FFF2E3",
+  success: "#009B4E",
+  successLight: "#E6F7EE",
+  warning: "#FF9416",
+  warningLight: "#FFF2E3",
   danger: "#c81e1e",
   dangerLight: "#fde8e8",
   info: "#0e9f6e",
   infoLight: "#d5f5e3",
-  bg: "#f8fafc",
+  bg: "#F7FBF8",
   bgCard: "#ffffff",
-  sidebar: "#0f172a",
-  sidebarText: "#94a3b8",
-  sidebarActive: "#1a56db",
-  text: "#0f172a",
-  textMuted: "#64748b",
-  border: "#e2e8f0",
-  borderDark: "#cbd5e1",
+  sidebar: "#063D25",
+  sidebarText: "#B7E7CB",
+  sidebarActive: "#009B4E",
+  text: "#123524",
+  textMuted: "#64746A",
+  border: "#DCEBE2",
+  borderDark: "#B9D8C7",
 };
 
 const PAYMENT_METHODS = ["PIX","Bonificação","Depósito","TED","DOC","Transferência Bancária","Dinheiro"];
@@ -110,7 +113,7 @@ const S = {
   avatar: (size = 32) => ({ width: size, height: size, borderRadius: "50%", background: COLORS.primaryLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, fontWeight: 700, color: COLORS.primary, flexShrink: 0 }),
   tabs: { display: "flex", gap: 0, borderBottom: `1px solid ${COLORS.border}`, marginBottom: 20 },
   tab: (active) => ({ padding: "10px 18px", cursor: "pointer", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? COLORS.primary : COLORS.textMuted, borderBottom: active ? `2px solid ${COLORS.primary}` : "2px solid transparent", marginBottom: -1, background: "none", border: "none", borderBottom: active ? `2px solid ${COLORS.primary}` : "2px solid transparent" }),
-  loginBox: { minHeight: "100vh", background: `linear-gradient(135deg, ${COLORS.sidebar} 0%, #1e3a5f 100%)`, display: "flex", alignItems: "center", justifyContent: "center" },
+  loginBox: { minHeight: "100vh", background: `linear-gradient(135deg, ${COLORS.sidebar} 0%, ${COLORS.primaryDark} 55%, ${COLORS.secondaryDark} 100%)`, display: "flex", alignItems: "center", justifyContent: "center" },
   loginCard: { background: "#fff", borderRadius: 16, padding: 40, width: "min(90vw, 400px)", boxShadow: "0 24px 80px rgba(0,0,0,0.3)" },
 };
 
@@ -150,7 +153,7 @@ const Icon = ({ name, size = 16, color }) => {
 
 // ─── STATUS BADGE ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) => {
-  const map = { Pago: "success", Pendente: "warning", Parcial: "info", Bonificado: "primary", Administrador: "primary", Operador: "info", Fornecedor: "success", Confirmado: "success", "Aguardando confirmação": "warning", Rejeitado: "danger" };
+  const map = { Pago: "success", Pendente: "warning", Parcial: "info", Bonificado: "primary", Administrador: "primary", Operador: "info", Fornecedor: "success", Confirmado: "success", "Aguardando confirmação": "warning", "Em análise": "warning", Ativo: "success", Inativo: "danger", Rejeitado: "danger" };
   return <span style={S.badge(map[status] || "primary")}>{status}</span>;
 };
 
@@ -272,8 +275,10 @@ const LoginScreen = ({ onLogin, portalMode, data, setData }) => {
     setLoading(true);
     setTimeout(() => {
       const base = localStorage.getItem("saas_data") ? JSON.parse(localStorage.getItem("saas_data")) : initData();
-      const user = base.users.find(u => u.email === email && u.senha === senha && u.ativo);
+      const user = base.users.find(u => u.email === email && u.senha === senha);
       if (!user) { setError("E-mail ou senha incorretos."); setLoading(false); return; }
+      if (user.tipo === "Fornecedor" && !user.ativo) { setError("Seu cadastro foi para análise. Aguarde o administrador vincular sua conta ao fornecedor."); setLoading(false); return; }
+      if (!user.ativo) { setError("Usuário inativo. Contate o administrador."); setLoading(false); return; }
       if (portalMode && user.tipo !== "Fornecedor") { setError("Acesso restrito ao portal de fornecedores."); setLoading(false); return; }
       if (!portalMode && user.tipo === "Fornecedor") { setError("Use o portal do fornecedor para acessar."); setLoading(false); return; }
       setLoading(false);
@@ -313,27 +318,8 @@ const LoginScreen = ({ onLogin, portalMode, data, setData }) => {
     let tipo = "Fornecedor";
 
     if (portalMode) {
-      fornecedorId = next.nextId.fornecedores++;
-      next.fornecedores.push({
-        id: fornecedorId,
-        razao_social: cadastro.razao_social,
-        nome_fantasia: cadastro.nome_fantasia || cadastro.razao_social,
-        cnpj: cadastro.cnpj,
-        inscricao_estadual: "",
-        contato: cadastro.contato || cadastro.nome,
-        telefone: cadastro.telefone,
-        celular: "",
-        email: cadastro.email,
-        endereco: "",
-        cidade: cadastro.cidade,
-        estado: cadastro.estado || "SP",
-        cep: "",
-        observacoes: "Cadastro realizado pelo portal do fornecedor",
-        created_at: new Date().toISOString().slice(0, 10),
-        saldo_devido: 0,
-        saldo_pago: 0,
-        saldo_bonificado: 0
-      });
+      fornecedorId = null;
+      tipo = "Fornecedor";
     } else {
       const emailsDemo = ["admin@sistema.com", "operador@sistema.com", "fornecedor@sistema.com"];
       const usuariosReaisSistema = next.users.filter(u => !emailsDemo.includes(String(u.email).toLowerCase()) && (u.tipo === "Administrador" || u.tipo === "Operador"));
@@ -348,7 +334,17 @@ const LoginScreen = ({ onLogin, portalMode, data, setData }) => {
       senha: cadastro.senha,
       tipo,
       fornecedor_id: fornecedorId,
-      ativo: true,
+      ativo: portalMode ? false : true,
+      fornecedor_pendente: portalMode ? {
+        razao_social: cadastro.razao_social,
+        nome_fantasia: cadastro.nome_fantasia,
+        cnpj: cadastro.cnpj,
+        contato: cadastro.contato || cadastro.nome,
+        telefone: cadastro.telefone,
+        cidade: cadastro.cidade,
+        estado: cadastro.estado || "SP"
+      } : null,
+      status_cadastro: portalMode ? "Em análise" : "Ativo",
       created_at: new Date().toISOString().slice(0, 10)
     };
 
@@ -366,11 +362,11 @@ const LoginScreen = ({ onLogin, portalMode, data, setData }) => {
     setEmail(cadastro.email);
     setSenha(cadastro.senha);
     setModo("login");
-    setError(portalMode ? "Cadastro realizado. Agora entre pelo portal do fornecedor." : `Cadastro realizado como ${tipo}. Agora clique em Entrar.`);
+    setError(portalMode ? "Seu cadastro foi para análise. Aguarde o administrador vincular sua conta ao fornecedor." : `Cadastro realizado como ${tipo}. Agora clique em Entrar.`);
   };
 
-  const F = ({ label, field, type = "text", opts }) => (
-    <div style={S.formRow}>
+  const renderCadastroField = (label, field, type = "text", opts) => (
+    <div style={S.formRow} key={field}>
       <label style={S.label}>{label}</label>
       {opts ? (
         <select style={S.select} value={cadastro[field] || ""} onChange={e => updateCadastro(field, e.target.value)}>
@@ -386,7 +382,7 @@ const LoginScreen = ({ onLogin, portalMode, data, setData }) => {
     <div style={S.loginBox}>
       <div style={S.loginCard}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ width: 52, height: 52, background: COLORS.primary, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+          <div style={{ width: 52, height: 52, background: portalMode ? COLORS.secondary : COLORS.primary, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
             {portalMode ? <Icon name="portal" size={26} color="#fff" /> : <Icon name="building" size={26} color="#fff" />}
           </div>
           <img src="/logo-gigantao.png" alt="Gigantão" style={{maxWidth:"220px",marginBottom:"12px"}} />
@@ -422,19 +418,19 @@ const LoginScreen = ({ onLogin, portalMode, data, setData }) => {
         ) : (
           <>
             <div style={{ ...S.grid(1), gap: 0 }}>
-              <F label="Nome" field="nome" />
-              <F label="E-mail" field="email" type="email" />
-              <F label="Senha" field="senha" type="password" />
-              <F label="Confirmar senha" field="confirmarSenha" type="password" />
+              {renderCadastroField("Nome", "nome")}
+              {renderCadastroField("E-mail", "email", "email")}
+              {renderCadastroField("Senha", "senha", "password")}
+              {renderCadastroField("Confirmar senha", "confirmarSenha", "password")}
               {portalMode && (
                 <>
-                  <F label="Razão Social" field="razao_social" />
-                  <F label="Nome Fantasia" field="nome_fantasia" />
-                  <F label="CNPJ" field="cnpj" />
-                  <F label="Contato" field="contato" />
-                  <F label="Telefone" field="telefone" />
-                  <F label="Cidade" field="cidade" />
-                  <F label="Estado" field="estado" opts={ESTADOS} />
+                  {renderCadastroField("Razão Social", "razao_social")}
+                  {renderCadastroField("Nome Fantasia", "nome_fantasia")}
+                  {renderCadastroField("CNPJ", "cnpj")}
+                  {renderCadastroField("Contato", "contato")}
+                  {renderCadastroField("Telefone", "telefone")}
+                  {renderCadastroField("Cidade", "cidade")}
+                  {renderCadastroField("Estado", "estado", "text", ESTADOS)}
                 </>
               )}
             </div>
@@ -590,7 +586,7 @@ const SuppliersScreen = ({ data, setData, currentUser, addLog }) => {
             <tr>{["Razão Social / Fantasia", "CNPJ", "Contato", "Cidade/UF", "Saldo Devido", "Saldo Pago", "Ações"].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && <tr><td colSpan={7} style={{ ...S.td, textAlign: "center", color: COLORS.textMuted, padding: 32 }}>Nenhum fornecedor encontrado</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={8} style={{ ...S.td, textAlign: "center", color: COLORS.textMuted, padding: 32 }}>Nenhum fornecedor encontrado</td></tr>}
             {filtered.map(f => (
               <tr key={f.id} style={{ cursor: "pointer" }}>
                 <td style={S.td}>
@@ -1229,7 +1225,7 @@ const UsersScreen = ({ data, setData, currentUser, addLog }) => {
       next.users.push({ ...form, id, created_at: new Date().toISOString().slice(0, 10), fornecedor_id: form.fornecedor_id ? Number(form.fornecedor_id) : null });
       addLog(`Usuário ${form.nome} cadastrado`);
     } else {
-      next.users = next.users.map(u => u.id === form.id ? { ...form, fornecedor_id: form.fornecedor_id ? Number(form.fornecedor_id) : null } : u);
+      next.users = next.users.map(u => u.id === form.id ? { ...form, fornecedor_id: form.fornecedor_id ? Number(form.fornecedor_id) : null, ativo: form.tipo === "Fornecedor" && form.fornecedor_id ? true : form.ativo, status_cadastro: form.tipo === "Fornecedor" && form.fornecedor_id ? "Ativo" : (form.status_cadastro || (form.ativo ? "Ativo" : "Em análise")) } : u);
       addLog(`Usuário ${form.nome} atualizado`);
     }
     setData(next);
@@ -1238,7 +1234,7 @@ const UsersScreen = ({ data, setData, currentUser, addLog }) => {
 
   const toggleActive = (id) => {
     const next = { ...data };
-    next.users = next.users.map(u => u.id === id ? { ...u, ativo: !u.ativo } : u);
+    next.users = next.users.map(u => u.id === id ? { ...u, ativo: !u.ativo, status_cadastro: !u.ativo ? "Ativo" : "Inativo" } : u);
     setData(next);
   };
 
@@ -1262,11 +1258,11 @@ const UsersScreen = ({ data, setData, currentUser, addLog }) => {
       <div style={S.card}>
         <table style={S.table}>
           <thead>
-            <tr>{["Usuário", "E-mail", "Tipo", "Fornecedor Vinculado", "Status", "Cadastro", "Ações"].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+            <tr>{["Usuário", "E-mail", "Tipo", "Fornecedor Vinculado", "Solicitação", "Status", "Cadastro", "Ações"].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {data.users.map(u => {
-              const forn = u.fornecedor_id ? data.fornecedores.find(f => f.id === u.fornecedor_id) : null;
+              const forn = u.fornecedor_id ? data.fornecedores.find(f => Number(f.id) === Number(u.fornecedor_id)) : null;
               return (
                 <tr key={u.id}>
                   <td style={S.td}>
@@ -1278,7 +1274,8 @@ const UsersScreen = ({ data, setData, currentUser, addLog }) => {
                   <td style={{ ...S.td, fontSize: 12 }}>{u.email}</td>
                   <td style={S.td}><StatusBadge status={u.tipo} /></td>
                   <td style={S.td}>{forn ? <span style={{ fontSize: 12 }}>{forn.nome_fantasia || forn.razao_social}</span> : <span style={{ color: COLORS.textMuted, fontSize: 12 }}>—</span>}</td>
-                  <td style={S.td}><StatusBadge status={u.ativo ? "Pago" : "Pendente"} /></td>
+                  <td style={S.td}>{u.fornecedor_pendente?.razao_social ? <span style={{ fontSize: 12 }}>{u.fornecedor_pendente.razao_social}<br />{u.fornecedor_pendente.cnpj || ""}</span> : <span style={{ color: COLORS.textMuted, fontSize: 12 }}>—</span>}</td>
+                  <td style={S.td}><StatusBadge status={u.status_cadastro || (u.ativo ? "Ativo" : "Em análise")} /></td>
                   <td style={{ ...S.td, fontSize: 12 }}>{fmtDate(u.created_at)}</td>
                   <td style={S.td}>
                     <div style={{ display: "flex", gap: 6 }}>
@@ -1366,8 +1363,8 @@ const AuditScreen = ({ data }) => (
 
 // ─── SUPPLIER PORTAL ──────────────────────────────────────────────────────────
 const SupplierPortal = ({ data, setData, currentUser, onLogout }) => {
-  const forn = data.fornecedores.find(f => f.id === currentUser.fornecedor_id);
-  const pagamentos = data.pagamentos.filter(p => p.fornecedor_id === currentUser.fornecedor_id).sort((a, b) => b.id - a.id);
+  const forn = data.fornecedores.find(f => Number(f.id) === Number(currentUser.fornecedor_id));
+  const pagamentos = data.pagamentos.filter(p => Number(p.fornecedor_id) === Number(currentUser.fornecedor_id)).sort((a, b) => b.id - a.id);
   const anexos = data.anexos.filter(a => pagamentos.some(p => p.id === a.pagamento_id));
   const [tab, setTab] = useState("dashboard");
   const [filterForma, setFilterForma] = useState("");
@@ -1376,8 +1373,8 @@ const SupplierPortal = ({ data, setData, currentUser, onLogout }) => {
     <div style={{ ...S.loginBox, textAlign: "center" }}>
       <div style={{ color: "#fff" }}>
         <Icon name="info" size={48} color="#fff" />
-        <h2>Fornecedor não vinculado</h2>
-        <p>Contate o administrador do sistema.</p>
+        <h2>Cadastro em análise</h2>
+        <p>Seu cadastro foi para análise. Aguarde o administrador vincular sua conta ao fornecedor correto.</p>
         <button style={{ ...S.btn("outline"), color: "#fff", borderColor: "#fff" }} onClick={onLogout}>Sair</button>
       </div>
     </div>
@@ -1387,10 +1384,10 @@ const SupplierPortal = ({ data, setData, currentUser, onLogout }) => {
 
   return (
     <div style={{ ...S.app, background: "#f8fafc" }}>
-      <div style={{ ...S.sidebar, background: "#0c4a6e" }}>
+      <div style={{ ...S.sidebar, background: COLORS.sidebar }}>
         <div style={S.sidebarLogo}>
-          <p style={S.sidebarLogoText}>Portal Fornecedor</p>
-          <p style={{ ...S.sidebarLogoSub, color: "#7dd3fc" }}>{forn.nome_fantasia || forn.razao_social}</p>
+          <img src="/logo-gigantao.png" alt="Gigantão" style={{ maxWidth: 150, background: "#fff", borderRadius: 10, padding: 8 }} />
+          <p style={{ ...S.sidebarLogoSub, color: "#B7E7CB" }}>{forn.nome_fantasia || forn.razao_social}</p>
         </div>
         <nav style={S.sidebarNav}>
           {[
@@ -1399,18 +1396,18 @@ const SupplierPortal = ({ data, setData, currentUser, onLogout }) => {
             { key: "docs", label: "Documentos", icon: "docs" },
             { key: "reports", label: "Relatórios", icon: "reports" },
           ].map(({ key, label, icon }) => (
-            <div key={key} style={{ ...S.sidebarItem(tab === key), borderLeftColor: tab === key ? "#38bdf8" : "transparent" }} onClick={() => setTab(key)}>
+            <div key={key} style={{ ...S.sidebarItem(tab === key), borderLeftColor: tab === key ? COLORS.secondary : "transparent" }} onClick={() => setTab(key)}>
               <Icon name={icon} size={16} /> {label}
             </div>
           ))}
         </nav>
         <div style={S.sidebarUser}>
-          <div style={{ ...S.avatar(32), background: "#075985", color: "#38bdf8" }}>{currentUser.nome.split(" ").map(n => n[0]).slice(0, 2).join("")}</div>
+          <div style={{ ...S.avatar(32), background: COLORS.primaryDark, color: COLORS.secondary }}>{currentUser.nome.split(" ").map(n => n[0]).slice(0, 2).join("")}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.nome}</p>
-            <p style={{ margin: 0, fontSize: 11, color: "#7dd3fc" }}>Fornecedor</p>
+            <p style={{ margin: 0, fontSize: 11, color: COLORS.sidebarText }}>Fornecedor</p>
           </div>
-          <button style={{ ...S.btn("ghost"), padding: 6, color: "#7dd3fc" }} onClick={onLogout} title="Sair"><Icon name="logout" size={15} /></button>
+          <button style={{ ...S.btn("ghost"), padding: 6, color: COLORS.sidebarText }} onClick={onLogout} title="Sair"><Icon name="logout" size={15} /></button>
         </div>
       </div>
       <div style={S.main}>
@@ -1467,7 +1464,7 @@ const SupplierPortal = ({ data, setData, currentUser, onLogout }) => {
                 <table style={S.table}>
                   <thead><tr>{["Data", "Valor", "Forma", "Anexo", "Status", "NF-e", "Observação"].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {filteredPag.length === 0 && <tr><td colSpan={7} style={{ ...S.td, textAlign: "center", color: COLORS.textMuted, padding: 32 }}>Nenhum pagamento encontrado</td></tr>}
+                    {filteredPag.length === 0 && <tr><td colSpan={8} style={{ ...S.td, textAlign: "center", color: COLORS.textMuted, padding: 32 }}>Nenhum pagamento encontrado</td></tr>}
                     {filteredPag.map(p => (
                       <tr key={p.id}>
                         <td style={S.td}>{fmtDate(p.data_pagamento)}</td>
@@ -1703,7 +1700,7 @@ export default function App() {
       {/* Sidebar */}
       <div style={S.sidebar}>
         <div style={S.sidebarLogo}>
-          <p style={S.sidebarLogoText}>FinanceERP</p>
+          <img src="/logo-gigantao.png" alt="Gigantão" style={{ maxWidth: 150, background: "#fff", borderRadius: 10, padding: 8 }} />
           <p style={S.sidebarLogoSub}>Gestão de Fornecedores</p>
         </div>
         <nav style={S.sidebarNav}>
